@@ -4,7 +4,7 @@ import express from 'express'
 // import { DB_Name } from '../utils/constants.js'
 import { connectDB } from '../db/connection.js'
 dotenv.config({path: './.env'})
-const app = express()
+import { app } from './app.js'
 
 /*
 ;(async ()=>{

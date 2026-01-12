@@ -4,22 +4,25 @@ import { User } from '../models/user.model.js'
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
 import { upload } from '../middlewares/multer.middleware.js'
 import { ApiResponse } from '../utils/ApiResponse.js'
+import dotenv from 'dotenv'
 
+dotenv.config({ path: './.env' })
 
-generateAcessAndRefreshToken = async (userId) => {
-    try{
-    const accessToken = userId.generateAccessToken()
-    const refreshToken = userId.generateRefreshToken()
+const generateAcessAndRefreshToken = async (user) => {
+    try {
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
 
-    userId.refreshToken = refreshToken
-    await userId.save({validateBeforeSave: false})
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false })
 
-    return { accessToken, refreshToken }
+        return { accessToken, refreshToken }
     }
-    catch(error){
-        throw new ApiError(500, "Failed to generate access and refresh token")
+    catch (error) {
+        throw new ApiError(500, error?.message || "Failed to generate access and refresh token")
     }
 }
+
 
 const registerUser = asyncHandler(async (req, res) => {
 
@@ -39,7 +42,7 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(409, "User with name or username already exists")
     }
 
-    const avatarLocalPath = req.files?.avatar[0]?.path
+    const avatarLocalPath = req.files?.avatar?.[0]?.path
     // const coverImageLocalPath = req.files?.coverImage[0]?.path
 
     let coverImageLocalPath
@@ -92,17 +95,17 @@ const loginUser = asyncHandler(async (req, res) => {
         $or: [{ email }, { username }]
     })
 
-    if(!user) {
+    if (!user) {
         throw new ApiError(404, "User is not registered")
     }
 
     const isPasswordCorrect = await user.comparePassword(password)
 
-    if(!isPasswordCorrect) {
+    if (!isPasswordCorrect) {
         throw new ApiError(404, "Invalid password")
     }
 
-    const { accessToken, refreshToken } = await generateAcessAndRefreshToken(user._id)
+    const { accessToken, refreshToken } = await generateAcessAndRefreshToken(user)
 
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
 
@@ -124,11 +127,11 @@ const loginUser = asyncHandler(async (req, res) => {
 //secured routes
 const logoutUser = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(req.user._id, {
-        $set: {refreshToken: undefined},
+        $set: { refreshToken: undefined },
     }, {
         new: true,
     })
-    
+
     const options = {
         httpOnly: true,
         secure: true
@@ -138,5 +141,48 @@ const logoutUser = asyncHandler(async (req, res) => {
         new ApiResponse(200, null, "User logged out successfully")
     )
 })
-export { registerUser, loginUser, logoutUser }
+
+
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    const incommingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+
+    if (!incommingRefreshToken) {
+        throw new ApiError(401, "Unauthorized Access")
+    }
+
+    try {
+        const decodedToken = jwt.verify(incommingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+    
+        const user = await User.findById(decodedToken?._id)
+    
+        if (!user) {
+            throw new ApiError(401, "Invalid Refresh Token")
+        }
+    
+        if (incommingRefreshToken != user?.refreshToken) {
+            throw new ApiError(401, "Refresh token is expired or used"
+    
+            )
+        }
+    
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+    
+        const { accessToken, refreshToken } = await generateAcessAndRefreshToken(user)
+    
+        return res.status(200).cookie('accessToken', accessToken).cookie('refreshToken', refreshToken).json(
+            new ApiResponse(200, {
+                accessToken: accessToken,
+                refreshToken: refreshToken
+            },
+        'Access Token Refreshed')
+        )
+    } catch (error) {
+     throw new ApiError(401, error?.message || "Invlaid Refresh Token ")   
+    }
+})
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken }
 

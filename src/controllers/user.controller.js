@@ -5,6 +5,8 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
+
 
 dotenv.config({ path: "./.env" });
 
@@ -143,7 +145,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: { refreshToken: undefined },
+      $unset: { refreshToken: 1 },
     },
     {
       new: true,

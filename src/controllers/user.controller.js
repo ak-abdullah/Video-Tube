@@ -6,7 +6,7 @@ import { upload } from "../middlewares/multer.middleware.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
-
+import jwt from "jsonwebtoken";
 
 dotenv.config({ path: "./.env" });
 

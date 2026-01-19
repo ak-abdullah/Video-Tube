@@ -148,15 +148,75 @@ const getVideoById = asyncHandler(async (req, res) => {
 const updateVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //TODO: update video details like title, description, thumbnail
+
+  const { title, description, thumbnail } = req.body;
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  if (title) video.title = title;
+  if (description) video.description = description;
+  const thumbnailPath = req.files?.thumbnail?.[0]?.path;
+
+
+
+  if (thumbnailPath) {
+
+    const thumbnailUploaded = await uploadOnCloudinary(thumbnailPath);
+    if (!thumbnailUploaded?.url) {
+      throw new ApiError(400, "Failed to upload thumbnail to cloudinary");
+    }
+    await deleteFromCloudinary(video.thumbnail);
+    video.thumbnail = thumbnailUploaded.url;
+
+  }
+
+
+  await video.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video updated successfully"));
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //TODO: delete video
+
+  const video = await Video.findByIdAndDelete(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  await deleteFromCloudinary(video.thumbnail);
+  await deleteFromCloudinary(video.videoFile, "video");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video deleted successfully"));
 });
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+
+  if (!videoId) {
+    throw new ApiError(400, "Video ID is required");
+  }
+
+  const video = await Video.findById(videoId)
+
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+  video.isPublished = !video.isPublished
+
+  await video.save({ validateBeforeSave: false });
+
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video published status toggled successfully"));
 });
 
 export {

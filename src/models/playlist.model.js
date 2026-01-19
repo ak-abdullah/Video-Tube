@@ -1,6 +1,6 @@
-import moongoose from "moongoose";
+import mongoose from "mongoose";
 
-const playlistSchema = new moongoose.Schema(
+const playlistSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -12,12 +12,12 @@ const playlistSchema = new moongoose.Schema(
     },
     videos: [
       {
-        type: Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: "Video",
       },
     ],
     owner: {
-      type: moongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
@@ -25,4 +25,4 @@ const playlistSchema = new moongoose.Schema(
   { timestamps: true }
 );
 
-export const Playlist = moongoose.model("Playlist", playlistSchema);
+export const Playlist = mongoose.model("Playlist", playlistSchema);
